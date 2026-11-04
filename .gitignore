@@ -1,0 +1,37 @@
+# Machine-specific mise configuration and environment files.
+*.local.toml
+.env
+.env.*
+!.env.example
+
+# Credential stores and authentication state.
+.aws/
+.ssh/
+.kube/
+.git-credentials
+.netrc
+.npmrc
+.pypirc
+.docker/config.json
+.codex/auth.json*
+.codex/sessions/
+.codex/history.jsonl
+.codex/log/
+.codex/state*.sqlite*
+
+# Personal SSH keys and certificate bundles.
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local editor and operating-system files.
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo

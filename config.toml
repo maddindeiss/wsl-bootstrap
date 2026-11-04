@@ -1,0 +1,84 @@
+# This repository becomes ~/.config/mise through bootstrap.sh.
+min_version = "2026.10.25"
+
+[vars]
+wsl_zsh_plugin_root = """\
+{% if get_env(name='ZSH_CUSTOM', default='') %}{{ env.ZSH_CUSTOM }}\
+{% elif get_env(name='ZSH', default='') %}{{ env.ZSH }}/custom\
+{% else %}{{ env.HOME }}/.oh-my-zsh/custom{% endif %}/plugins"""
+
+[tools]
+# Default development tools. Project mise.toml files can override them.
+node = "latest"
+go = "latest"
+dotnet = "latest"
+pnpm = "latest"
+oh-my-posh = "latest"
+fzf = "latest"
+entire = "latest"
+
+[bootstrap.directories."~/projects/work"]
+mode = "0755"
+
+[bootstrap.directories."~/projects/private"]
+mode = "0755"
+
+# Leave existing checkouts at their current commit on ordinary runs.
+[bootstrap.repos]
+"~/.oh-my-zsh" = { url = "https://github.com/ohmyzsh/ohmyzsh.git", depth = 1 }
+"{{ vars.wsl_zsh_plugin_root }}/zsh-autosuggestions" = { url = "https://github.com/zsh-users/zsh-autosuggestions.git", depth = 1 }
+"{{ vars.wsl_zsh_plugin_root }}/zsh-syntax-highlighting" = { url = "https://github.com/zsh-users/zsh-syntax-highlighting.git", depth = 1 }
+"{{ vars.wsl_zsh_plugin_root }}/zsh-completions" = { url = "https://github.com/zsh-users/zsh-completions.git", depth = 1 }
+
+[bootstrap.user]
+login_shell = "zsh"
+
+# The initial .deb also configures Google's apt repository.
+[bootstrap.hooks.pre-packages]
+run = 'bash "{{ mise_config_dir }}/scripts/install-chrome.sh"'
+
+[bootstrap.apt.sources.docker]
+uris = "https://download.docker.com/linux/ubuntu"
+components = "stable"
+key = "https://download.docker.com/linux/ubuntu/gpg"
+fingerprint = "9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+
+[bootstrap.packages]
+"apt:zsh" = "latest"
+"apt:ca-certificates" = "latest"
+"apt:curl" = "latest"
+"apt:git" = "latest"
+"apt:unzip" = "latest"
+"apt:zip" = "latest"
+# install-chrome.sh installs the initial package and its Google apt repository.
+"apt:google-chrome-stable" = "latest"
+# Native globalization library required by .NET on Ubuntu 26.04.
+"apt:libicu78" = "latest"
+"apt:docker-ce" = "latest"
+"apt:docker-ce-cli" = "latest"
+"apt:containerd.io" = "latest"
+"apt:docker-buildx-plugin" = "latest"
+"apt:docker-compose-plugin" = "latest"
+
+[bootstrap.services.docker]
+state = "running"
+enabled = true
+
+[tasks.bootstrap]
+description = "Configure Docker group access and personal Git identity"
+run = 'bash "{{ mise_config_dir }}/scripts/finalize-setup.sh"'
+raw = true
+
+[dotfiles]
+"~/.config/wsl-dev-setup/gitconfig" = { source = "files/gitconfig", mode = "symlink" }
+# Include defaults first so personal values in ~/.gitconfig take precedence.
+"~/.gitconfig/wsl-dev-setup" = { line = '[include] path = "~/.config/wsl-dev-setup/gitconfig"', position = "prepend" }
+"~/.config/wsl-dev-setup/bashrc.sh" = { source = "files/bashrc.sh", mode = "symlink" }
+"~/.bashrc/wsl-dev-setup" = { block = '. "$HOME/.config/wsl-dev-setup/bashrc.sh"' }
+# Ubuntu reads .profile for login shells. Add shims without replacing that file.
+"~/.profile/wsl-dev-setup" = { block = 'eval "$("$HOME/.local/bin/mise" activate bash --shims)"' }
+"~/.config/wsl-dev-setup/zshrc.sh" = { source = "files/zshrc.sh", mode = "symlink" }
+"~/.config/wsl-dev-setup/wsl-dev.omp.json" = { source = "files/wsl-dev.omp.json", mode = "symlink" }
+"~/.zshrc/wsl-dev-setup" = { block = '. "$HOME/.config/wsl-dev-setup/zshrc.sh"' }
+# Zsh login shells read .zprofile instead of .profile.
+"~/.zprofile/wsl-dev-setup" = { block = 'eval "$("$HOME/.local/bin/mise" activate zsh --shims)"' }

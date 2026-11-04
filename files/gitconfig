@@ -1,0 +1,19 @@
+# Shared defaults for Ubuntu WSL. Keep personal identity in ~/.gitconfig.
+[core]
+    sshCommand = ssh.exe
+    eol = lf
+    autocrlf = input
+    symlinks = true
+
+[init]
+    defaultBranch = main
+
+[fetch]
+    prune = true
+
+[pull]
+    ff = only
+
+[push]
+    default = simple
+    autoSetupRemote = true
