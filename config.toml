@@ -1,4 +1,5 @@
 # This repository becomes ~/.config/mise through bootstrap.sh.
+# Minimum needed for this configuration; bootstrap installs the newest stable mise.
 min_version = "2026.10.25"
 
 [vars]
@@ -16,6 +17,8 @@ pnpm = "latest"
 oh-my-posh = "latest"
 fzf = "latest"
 entire = "latest"
+codex = "latest"
+claude = "latest"
 
 [bootstrap.directories."~/projects/work"]
 mode = "0755"
@@ -43,6 +46,18 @@ components = "stable"
 key = "https://download.docker.com/linux/ubuntu/gpg"
 fingerprint = "9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
 
+# Expose the agent CLIs in ~/.local/bin for tools that bypass mise shell activation.
+[bootstrap.hooks.post-tools]
+run = '''
+for cli in codex claude; do
+  launcher="$HOME/.local/bin/$cli"
+  if [ ! -e "$launcher" ] && [ ! -L "$launcher" ] &&
+     "$HOME/.local/bin/mise" which "$cli" >/dev/null 2>&1; then
+    ln -sT -- "$HOME/.local/bin/mise" "$launcher"
+  fi
+done
+'''
+
 [bootstrap.packages]
 "apt:zsh" = "latest"
 "apt:ca-certificates" = "latest"
@@ -50,6 +65,18 @@ fingerprint = "9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
 "apt:git" = "latest"
 "apt:unzip" = "latest"
 "apt:zip" = "latest"
+# Native build prerequisites, including Python for Node.js native addons.
+"apt:build-essential" = "latest"
+"apt:pkg-config" = "latest"
+"apt:python3" = "latest"
+"apt:python3-venv" = "latest"
+# Everyday command-line utilities. Ubuntu names the fd command fdfind.
+"apt:jq" = "latest"
+"apt:ripgrep" = "latest"
+"apt:fd-find" = "latest"
+"apt:gh" = "latest"
+"apt:tmux" = "latest"
+"apt:rsync" = "latest"
 # install-chrome.sh installs the initial package and its Google apt repository.
 "apt:google-chrome-stable" = "latest"
 # Native globalization library required by .NET on Ubuntu 26.04.

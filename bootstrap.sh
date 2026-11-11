@@ -5,10 +5,11 @@ usage() {
   cat <<'USAGE'
 Usage: ./bootstrap.sh [--dry-run] [--yes] [--update] [--skip-git-config]
 
-Install Zsh prerequisites and mise, then apply the declared setup.
+Install Zsh prerequisites and the newest stable mise, then apply the declared setup.
 Mise clones Oh My Zsh and its plugins before installing Docker and development tools.
 Mise also creates project folders and makes Zsh the default login shell.
 Run as your regular Ubuntu user; package installation uses sudo when needed.
+Requires Ubuntu 26.04 amd64 on WSL 2.
 On WSL, enable systemd in /etc/wsl.conf before installing services.
 
   --dry-run          Preview without installing anything or changing configuration.
@@ -79,16 +80,14 @@ for arg in "$@"; do
 done
 
 [[ $EUID -ne 0 ]] || die 'Run this script as your regular user, without sudo.'
+repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+bash "$repo_dir/scripts/check-platform.sh"
 # shellcheck source=/etc/os-release
 source /etc/os-release
-[[ $ID == ubuntu ]] || die 'This starter currently supports Ubuntu.'
 [[ -z ${MISE_GLOBAL_CONFIG_FILE:-} ]] || die 'Unset MISE_GLOBAL_CONFIG_FILE before running this setup.'
 
-repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 config_dir=${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/mise}
 mise_bin="$HOME/.local/bin/mise"
-mise_version=$(<"$repo_dir/.mise-version")
-[[ $mise_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die 'Invalid version in .mise-version.'
 oh_my_zsh_dir="$HOME/.oh-my-zsh"
 
 # Check before installing anything. An empty directory is safe to replace.
@@ -153,7 +152,7 @@ if "$dry_run"; then
   if ((${#missing_packages[@]})); then
     printf 'Would install prerequisites with apt: %s\n' "${missing_packages[*]}"
   fi
-  printf 'Would ensure mise %s at %s\n' "$mise_version" "$mise_bin"
+  printf 'Would install or update mise to the newest stable release at %s\n' "$mise_bin"
   printf 'Would link %s -> %s\n' "$config_dir" "$repo_dir"
   printf 'Would configure Docker group access in the final mise bootstrap task.\n'
   if ! "$skip_git_config"; then
@@ -178,16 +177,13 @@ if ((${#missing_packages[@]})); then
   sudo apt-get install -y --no-install-recommends "${missing_packages[@]}"
 fi
 
-installed_version=''
-if [[ -x $mise_bin ]]; then
-  installed_version=$("$mise_bin" --version | cut -d ' ' -f 1)
-fi
-if [[ $installed_version != "$mise_version" ]]; then
-  installer=$(mktemp)
-  trap 'rm -- "$installer"' EXIT
-  curl --fail --silent --show-error --location https://mise.run --output "$installer"
-  MISE_VERSION="v$mise_version" MISE_INSTALL_PATH="$mise_bin" sh "$installer"
-fi
+installer=$(mktemp)
+trap 'rm -- "$installer"' EXIT
+curl --fail --silent --show-error --location https://mise.run --output "$installer"
+# Resolve the latest stable release on every run, without an inherited version
+# pin or the installer's default release-age delay. Current/newer installs stay.
+env -u MISE_VERSION MISE_SELF_UPDATE_MINIMUM_RELEASE_AGE=0s \
+  MISE_INSTALL_PATH="$mise_bin" sh "$installer"
 
 mkdir -p -- "$(dirname -- "$config_dir")"
 if [[ ! -L $config_dir && $config_dir != "$repo_dir" ]]; then
@@ -201,6 +197,6 @@ cd -- "$repo_dir"
 MISE_CONFIG_DIR="$repo_dir" "$mise_bin" bootstrap --only repos "${mise_args[@]}"
 WSL_DEV_SETUP_SKIP_GIT_CONFIG="$skip_git_config" MISE_CONFIG_DIR="$repo_dir" \
   "$mise_bin" bootstrap --skip repos "${mise_args[@]}"
-printf '\nSetup applied. Reopen Ubuntu, or switch this terminal with: exec zsh -l\nThen run: mise doctor\n'
+printf '\nSetup applied. Reopen Ubuntu to activate Zsh and Docker group access.\nThen run: ./scripts/verify-setup.sh\n'
 printf 'Oh My Posh icons need a Nerd Font installed on Windows and selected in your terminal. See README.md.\n'
 report_wslg_status
